@@ -35,7 +35,7 @@ defmodule Graylog do
     sanitised_endpoint = sanitise_with_wildcards(endpoint)
 
     params = [
-      "query=message:\"#{sanitised_endpoint}\" AND message: \"#{method}\" AND container_name:backend AND namespace_labels_name:live",
+      "query=message:\"#{sanitised_endpoint}\" AND message: \"#{method}\"",
       "range=2592000",
       "limit=150",
       "sort=timestamp:desc"
