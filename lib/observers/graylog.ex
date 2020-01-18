@@ -72,7 +72,7 @@ defmodule Graylog do
   end
 
   def build_auth_header!() do
-    user = System.get_env("GRAYLOG_AUTH_TOKEN") || raise "Can't find GRAYLOG_AUTH_TOKEN"
+    user = get_auth_token!()
     pass = "token"
     "Basic #{Base.encode64(user <> ":" <> pass)}"
   end
@@ -81,5 +81,13 @@ defmodule Graylog do
     body
     |> Poison.decode!()
     |> Map.get("total_results")
+  end
+
+  def get_auth_token! do
+    LocalStorage.read!("GRAYLOG_AUTH_TOKEN")
+  end
+
+  def save_auth_token!(token) do
+    LocalStorage.save!("GRAYLOG_AUTH_TOKEN", token)
   end
 end

@@ -11,9 +11,6 @@ defmodule AppSignal do
 
   defstruct [:endpoint, :method, :count]
 
-  @live_app_id System.get_env("APPSIGNAL_LIVE_APP_ID")
-  @token System.get_env("APPSIGNAL_API_TOKEN")
-
   @doc """
   `AppSignal.hit_count/1` uses the module and the function to get the throughput for that action via
   the Graph API. It then returns a `%AppSignal{}` struct with the count of hits in the last month.
@@ -29,10 +26,10 @@ defmodule AppSignal do
       "fields[]=count",
       "fields[]=ex_rate",
       "action_name=#{module}-hash-#{String.replace(function, ":", "")}",
-      "token=#{@token}"
+      "token=#{get_api_token!()}"
     ]
 
-    url = "https://appsignal.com/api/#{@live_app_id}/graphs.json?" <> Enum.join(params, "&")
+    url = "https://appsignal.com/api/#{get_app_id!()}/graphs.json?" <> Enum.join(params, "&")
 
     case HTTPoison.get!(url, recv_timeout: :infinity, timeout: :infinity) do
       %{body: body, status_code: 200} -> to_result(endpoint, method, body)
@@ -56,4 +53,20 @@ defmodule AppSignal do
   # Sometimes the endpoint isn't called in a certain timeframe, so the
   # properties don't come.
   defp reduce(_, acc), do: acc
+
+  def get_api_token! do
+    LocalStorage.read!("APPSIGNAL_API_TOKEN")
+  end
+
+  def save_api_token!(token) do
+    LocalStorage.save!("APPSIGNAL_API_TOKEN", token)
+  end
+
+  def get_app_id! do
+    LocalStorage.read!("APPSIGNAL_LIVE_APP_ID")
+  end
+
+  def save_app_id!(app_id) do
+    LocalStorage.save!("APPSIGNAL_LIVE_APP_ID", app_id)
+  end
 end
