@@ -17,9 +17,25 @@ defmodule Graylog do
   defstruct [:endpoint, :method, :count]
 
   @url "https://graylog.rekki.com/api/search/universal/relative"
+  @test_url "https://graylog.rekki.com/api/cluster"
 
   def new(endpoint, method, count),
     do: %__MODULE__{endpoint: endpoint, method: method, count: count}
+
+  def test_connection do
+    case HTTPoison.get!(@test_url, get_headers!(), recv_timeout: :infinity, timeout: :infinity) do
+      %{status_code: 200} -> :ok
+      %{status_code: 401} -> {:error, :unauthorized}
+      _ -> {:error, :unknown}
+    end
+  end
+
+  def test_connection! do
+    case test_connection() do
+      :ok -> :ok
+      {:error, reason} -> raise "Connection to Graylog failed - #{reason}"
+    end
+  end
 
   @impl true
   def hit_count(%{endpoint: endpoint, method: method}) do

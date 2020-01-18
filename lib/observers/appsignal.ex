@@ -11,6 +11,23 @@ defmodule AppSignal do
 
   defstruct [:endpoint, :method, :count]
 
+  def test_connection do
+    url = "https://appsignal.com/api/#{get_app_id!()}/markers.json?token=#{get_api_token!()}"
+    case HTTPoison.get!(url, recv_timeout: :infinity, timeout: :infinity) do
+      %{status_code: 200} -> :ok
+      %{status_code: 401} -> {:error, :unauthorized}
+      %{status_code: 404} -> {:error, :app_not_found}
+      _ -> {:error, :unknown}
+    end
+  end
+
+  def test_connection! do
+    case test_connection() do
+      :ok -> :ok
+      {:error, reason} -> raise "Connection to AppSignal failed - #{reason}"
+    end
+  end
+
   @doc """
   `AppSignal.hit_count/1` uses the module and the function to get the throughput for that action via
   the Graph API. It then returns a `%AppSignal{}` struct with the count of hits in the last month.
