@@ -12,7 +12,7 @@ defmodule AppSignal do
   defstruct [:endpoint, :method, :count]
 
   def new(endpoint, method, count),
-      do: %__MODULE__{endpoint: endpoint, method: method, count: count}
+    do: %__MODULE__{endpoint: endpoint, method: method, count: count}
 
   def test_connection do
     with {:ok, api_token} <- get_api_token(),
@@ -40,17 +40,8 @@ defmodule AppSignal do
   def hit_count(%{endpoint: endpoint, method: method, module: module, function: function}) do
     with {:ok, api_token} <- get_api_token(),
          {:ok, app_id} <- get_app_id() do
-      params = [
-        "timeframe=month",
-        # FIXME for channels, it has to be kind=channel !!
-        "kind=web",
-        "fields[]=count",
-        "fields[]=ex_rate",
-        "action_name=#{module}-hash-#{String.replace(function, ":", "")}",
-        "token=#{api_token}"
-      ]
-
-      url = "https://appsignal.com/api/#{app_id}/graphs.json?" <> Enum.join(params, "&")
+      params = build_query_params(module, function, api_token)
+      url = "https://appsignal.com/api/#{app_id}/graphs.json" <> params
 
       case HTTPoison.get!(url, recv_timeout: :infinity, timeout: :infinity) do
         %{body: body, status_code: 200} -> to_result(endpoint, method, body)
@@ -59,6 +50,23 @@ defmodule AppSignal do
     else
       error -> error
     end
+  end
+
+  def build_query_params(module, function, api_token) do
+    params = [
+      "timeframe=month",
+      # FIXME for channels, it has to be kind=channel !!
+      "kind=web",
+      "fields[]=count",
+      "fields[]=ex_rate",
+      "action_name=#{module}-hash-#{String.replace(function, ":", "")}",
+      "token=#{api_token}"
+    ]
+
+    params
+    |> Enum.join("&")
+    |> String.replace_prefix("", "?")
+    |> URI.encode()
   end
 
   def to_result(endpoint, method, body) do
