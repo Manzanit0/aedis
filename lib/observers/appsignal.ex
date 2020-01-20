@@ -21,13 +21,6 @@ defmodule AppSignal do
     end
   end
 
-  def test_connection! do
-    case test_connection() do
-      :ok -> :ok
-      {:error, reason} -> raise "Connection to AppSignal failed - #{reason}"
-    end
-  end
-
   @doc """
   `AppSignal.hit_count/1` uses the module and the function to get the throughput for that action via
   the Graph API. It then returns a `%AppSignal{}` struct with the count of hits in the last month.
@@ -71,19 +64,39 @@ defmodule AppSignal do
   # properties don't come.
   defp reduce(_, acc), do: acc
 
-  def get_api_token! do
-    LocalStorage.read!("APPSIGNAL_API_TOKEN")
-  end
-
   def save_api_token!(token) do
     LocalStorage.save!("APPSIGNAL_API_TOKEN", token)
   end
 
-  def get_app_id! do
-    LocalStorage.read!("APPSIGNAL_LIVE_APP_ID")
+  def get_api_token do
+    case LocalStorage.read("APPSIGNAL_API_TOKEN") do
+      value when is_binary(value) -> {:ok, value}
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  def get_api_token! do
+    case get_api_token() do
+      {:ok, value} -> value
+      {:error, error} -> raise "Error reading AppSignal API token from config - #{error}"
+    end
   end
 
   def save_app_id!(app_id) do
     LocalStorage.save!("APPSIGNAL_LIVE_APP_ID", app_id)
+  end
+
+  def get_app_id do
+    case LocalStorage.read("APPSIGNAL_LIVE_APP_ID") do
+      value when is_binary(value) -> {:ok, value}
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  def get_app_id! do
+    case get_app_id() do
+      {:ok, value} -> value
+      {:error, error} -> raise "Error reading AppSignal Application Id from config - #{error}"
+    end
   end
 end
