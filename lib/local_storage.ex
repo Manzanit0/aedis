@@ -25,14 +25,6 @@ defmodule LocalStorage do
     File.close(file)
   end
 
-  @doc "Same as read, but exploding :-)"
-  def read!(name) do
-    case read(name) do
-      {:error, reason} -> raise "Error reading #{name} - #{reason}"
-      token -> token
-    end
-  end
-
   @doc """
   Reads the variable with name `name`.
 
@@ -53,7 +45,7 @@ defmodule LocalStorage do
   defp find_config_variable({:ok, content}, name) do
     case find_first_occurrence(content, name) do
       nil -> {:error, :novar}
-      variable -> parse_value(variable)
+      variable -> {:ok, parse_value(variable)}
     end
   end
 
