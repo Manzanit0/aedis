@@ -26,14 +26,8 @@ defmodule Graylog do
     case HTTPoison.get!(@test_url, get_headers!(), recv_timeout: :infinity, timeout: :infinity) do
       %{status_code: 200} -> :ok
       %{status_code: 401} -> {:error, :unauthorized}
+      %{status_code: 503} -> {:error, :service_unavailable}
       _ -> {:error, :unknown}
-    end
-  end
-
-  def test_connection! do
-    case test_connection() do
-      :ok -> :ok
-      {:error, reason} -> raise "Connection to Graylog failed - #{reason}"
     end
   end
 
@@ -87,10 +81,12 @@ defmodule Graylog do
     if String.starts_with?(term, ":"), do: "*", else: term
   end
 
-  def build_auth_header!() do
-    user = get_auth_token!()
-    pass = "token"
-    "Basic #{Base.encode64(user <> ":" <> pass)}"
+  def build_auth_header! do
+    with {:ok, user} <- get_auth_token() do
+      "Basic #{Base.encode64(user <> ":" <> "token")}"
+    else
+      error -> raise "Error reading Graylog auth token - #{error}"
+    end
   end
 
   defp extract_count(body) do
@@ -99,8 +95,11 @@ defmodule Graylog do
     |> Map.get("total_results")
   end
 
-  def get_auth_token! do
-    LocalStorage.read!("GRAYLOG_AUTH_TOKEN")
+  def get_auth_token do
+    case LocalStorage.read("GRAYLOG_AUTH_TOKEN") do
+      value when is_binary(value) -> {:ok, value}
+      {:error, error} -> {:error, error}
+   end
   end
 
   def save_auth_token!(token) do

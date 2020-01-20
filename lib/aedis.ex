@@ -76,9 +76,21 @@ defmodule Aedis do
   end
 
   def execute(path: path, router: router) do
-    case check_preconditions() do
-      :ok -> get_stats(path, router)
-      {:error, reason} -> IO.puts(reason)
+    with {:ok, _value} <- Graylog.get_auth_token(),
+         {:ok, _value} <- AppSignal.get_api_token(),
+         {:ok, _value} <- AppSignal.get_app_id(),
+         {:gr, :ok} <- {:gr, Graylog.test_connection()},
+         {:as, :ok} <- {:as, AppSignal.test_connection()} do
+      IO.puts(":: Starting to fetch and aggregate data (this can take long) ::")
+      Phoenix.routes(path, router)
+      |> StatAggregator.get_aggregated_stats()
+      |> Scribe.print(data: [:method, :endpoint, :graylog_count, :appsignal_count])
+    else
+      {:error, :enoent} -> IO.puts("!! Can't find configuration file. To solve, run $ aedis --init")
+      {:error, :enomem} -> IO.puts("!! Error reading config - not enough memory. This is weird...")
+      {:error, :novar} -> IO.puts("!! Missing configuration. To solve, run $ aedis --init")
+      {:gr, {:error, error}} -> IO.puts("!! Error connecting to Graylog -  #{error}")
+      {:as, {:error, error}} -> IO.puts("!! Error connecting to AppSignal - #{error}")
     end
   end
 
@@ -88,28 +100,5 @@ defmodule Aedis do
 
   def execute(_) do
     IO.puts("That is not a valid aedis command. See 'aedis --help'.")
-  end
-
-  defp check_preconditions do
-    try do
-      Graylog.get_auth_token!()
-      Graylog.test_connection!()
-      IO.puts(":: Connected successfully to Graylog ::")
-
-      AppSignal.get_api_token!()
-      AppSignal.get_app_id!()
-      AppSignal.test_connection!()
-      IO.puts(":: Connected successfully to AppSignal ::")
-    rescue
-      error in RuntimeError -> {:error, error.message}
-    end
-  end
-
-  defp get_stats(path, router) do
-    IO.puts(":: Starting to fetch and aggregate data (this can take long) ::")
-
-    Phoenix.routes(path, router)
-    |> StatAggregator.get_aggregated_stats()
-    |> Scribe.print(data: [:method, :endpoint, :graylog_count, :appsignal_count])
   end
 end
