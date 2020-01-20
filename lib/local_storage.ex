@@ -4,6 +4,13 @@ defmodule LocalStorage do
   stored as `name=value`, and when read, will return the first ocurrence.
   """
 
+  @doc "Deletes local storage file `~/.aedis`"
+  def nuke do
+    System.user_home()
+    |> Path.join(".aedis")
+    |> File.rm()
+  end
+
   @doc """
   Saves name/value tuple to local storage and creates the file if it
   doesn't exist.
@@ -18,6 +25,7 @@ defmodule LocalStorage do
     File.close(file)
   end
 
+  @doc "Same as read, but exploding :-)"
   def read!(name) do
     case read(name) do
       {:error, reason} -> raise "Error reading #{name} - #{reason}"
@@ -60,12 +68,5 @@ defmodule LocalStorage do
     variable
     |> String.split("=")
     |> Enum.at(1)
-  end
-
-@doc "Deletes local storage file `~/.aedis`"
-  def nuke do
-    System.user_home()
-    |> Path.join(".aedis")
-    |> File.rm()
   end
 end
