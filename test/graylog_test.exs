@@ -34,15 +34,4 @@ defmodule GraylogTest do
       assert {:ok, %Graylog{count: nil}} = Graylog.to_result("endpoint", "method", body)
     end
   end
-
-  describe "build auth header" do
-    @tag :skip
-    test "explodes upon missing auth token in env variables" do
-      assert "Can't find GRAYLOG_AUTH_TOKEN" == catch_error(Graylog.build_auth_header!())
-    end
-
-    test "creates a BASIC auth header" do
-      assert Graylog.build_auth_header!() =~ "Basic "
-    end
-  end
 end
