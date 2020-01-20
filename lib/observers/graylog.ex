@@ -12,6 +12,8 @@ defmodule Graylog do
   must be stored as an environment variable in `GRAYLOG_AUTH_TOKEN`.
   """
 
+  alias Poison.ParseError
+
   @behaviour Observer
 
   defstruct [:endpoint, :method, :count]
@@ -23,25 +25,36 @@ defmodule Graylog do
     do: %__MODULE__{endpoint: endpoint, method: method, count: count}
 
   def test_connection do
-    case HTTPoison.get!(@test_url, get_headers!(), recv_timeout: :infinity, timeout: :infinity) do
-      %{status_code: 200} -> :ok
-      %{status_code: 401} -> {:error, :unauthorized}
-      %{status_code: 503} -> {:error, :service_unavailable}
-      _ -> {:error, :unknown}
+    with {:ok, token} <- get_auth_token() do
+      headers = build_headers(token)
+
+      case HTTPoison.get!(@test_url, headers, recv_timeout: :infinity, timeout: :infinity) do
+        %{status_code: 200} -> :ok
+        %{status_code: 401} -> {:error, :unauthorized}
+        %{status_code: 503} -> {:error, :service_unavailable}
+        _ -> {:error, :unknown}
+      end
+    else
+      error -> error
     end
   end
 
   @impl true
   def hit_count(%{endpoint: endpoint, method: method}) do
-    url = @url <> get_query_params(endpoint, method)
+    with {:ok, token} <- get_auth_token() do
+      url = @url <> build_query_params(endpoint, method)
+      headers = build_headers(token)
 
-    case HTTPoison.get!(url, get_headers!(), recv_timeout: :infinity, timeout: :infinity) do
-      %{body: body, status_code: 200} -> to_result(endpoint, method, body)
-      _ -> :error
+      case HTTPoison.get!(url, headers, recv_timeout: :infinity, timeout: :infinity) do
+        %{body: body, status_code: 200} -> to_result(endpoint, method, body)
+        _ -> {:error, :httperror}
+      end
+    else
+      error -> error
     end
   end
 
-  def get_query_params(endpoint, method) do
+  def build_query_params(endpoint, method) do
     sanitised_endpoint = sanitise_with_wildcards(endpoint)
 
     params = [
@@ -57,17 +70,18 @@ defmodule Graylog do
     |> URI.encode()
   end
 
-  def get_headers! do
+  def build_headers(auth_token) do
     [
       {"Accept", "application/json"},
-      {"authorization", build_auth_header!()}
+      {"authorization", "Basic #{Base.encode64(auth_token <> ":" <> "token")}"}
     ]
   end
 
   def to_result(endpoint, method, body) do
-    count = extract_count(body)
-    result = new(endpoint, method, count)
-    {:ok, result}
+    case extract_count(body) do
+      {:ok, count} -> {:ok, new(endpoint, method, count)}
+      error -> error
+    end
   end
 
   def sanitise_with_wildcards(endpoint) do
@@ -81,28 +95,14 @@ defmodule Graylog do
     if String.starts_with?(term, ":"), do: "*", else: term
   end
 
-  def build_auth_header! do
-    with {:ok, user} <- get_auth_token() do
-      "Basic #{Base.encode64(user <> ":" <> "token")}"
-    else
-      error -> raise "Error reading Graylog auth token - #{error}"
+  defp extract_count(body) do
+    case Poison.decode(body) do
+      {:ok, decoded} -> {:ok, Map.get(decoded, "total_results")}
+      {:error, err} -> {:error, ParseError.message(err)}
     end
   end
 
-  defp extract_count(body) do
-    body
-    |> Poison.decode!()
-    |> Map.get("total_results")
-  end
+  def get_auth_token, do: LocalStorage.read("GRAYLOG_AUTH_TOKEN")
 
-  def get_auth_token do
-    case LocalStorage.read("GRAYLOG_AUTH_TOKEN") do
-      value when is_binary(value) -> {:ok, value}
-      {:error, error} -> {:error, error}
-   end
-  end
-
-  def save_auth_token!(token) do
-    LocalStorage.save!("GRAYLOG_AUTH_TOKEN", token)
-  end
+  def save_auth_token!(token), do: LocalStorage.save!("GRAYLOG_AUTH_TOKEN", token)
 end
