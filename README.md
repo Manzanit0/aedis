@@ -30,6 +30,8 @@ The results look like below:
 
 ## Usage
 
+Clone and compile the application:
+
 ```
 git clone https://github.com/Manzanit0/aedis
 cd aedis
@@ -37,10 +39,15 @@ mix deps.get
 mix escript.build
 ```
 
-And then: `./aedis`
+Init necessary configuration (this will save all sensitive data under `~/.aedis`):
 
-Example:
+```shell script
+./aedis --init
 ```
+
+Inspect your Phoenix project:
+
+```shell script
 ./aedis --path=/home/javiergarciamanzano/Work/rekki-backend/ --router=Chat.Web.Router
 ```
 
