@@ -1,7 +1,7 @@
 defmodule AppSignalTest do
   use ExUnit.Case
 
-  alias AppSignal
+  alias Aedis.Services.AppSignal
 
   @moduletag :capture_log
 

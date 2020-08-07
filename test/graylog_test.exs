@@ -1,7 +1,7 @@
 defmodule GraylogTest do
   use ExUnit.Case
 
-  alias Graylog
+  alias Aedis.Services.Graylog
 
   @moduletag :capture_log
 

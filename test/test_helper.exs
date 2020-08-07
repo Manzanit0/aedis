@@ -1,4 +1,4 @@
-Mox.defmock(GraylogMock, for: Observer)
-Mox.defmock(AppSignalMock, for: Observer)
+Mox.defmock(GraylogMock, for: Aedis.Services.Client)
+Mox.defmock(AppSignalMock, for: Aedis.Services.Client)
 
 ExUnit.start()

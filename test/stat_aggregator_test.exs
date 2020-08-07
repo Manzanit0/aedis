@@ -3,6 +3,12 @@ defmodule StatAggregatorTest do
 
   import Mox
 
+  alias Aedis.Phoenix
+  alias Aedis.StatAggregator
+  alias Aedis.StatAggregator.Result
+  alias Aedis.Services.Graylog
+  alias Aedis.Services.AppSignal
+
   test "gets aggregated stats, discarding errors" do
     GraylogMock
     |> expect(:hit_count, fn %{endpoint: e, method: m} ->

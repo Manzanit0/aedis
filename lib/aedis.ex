@@ -29,6 +29,12 @@ defmodule Aedis do
   ```
   """
 
+  alias Aedis.LocalStorage
+  alias Aedis.Phoenix
+  alias Aedis.StatAggregator
+  alias Aedis.Services.Graylog
+  alias Aedis.Services.AppSignal
+
   def main(args) do
     args
     |> parse_params()
