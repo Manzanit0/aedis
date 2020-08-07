@@ -22,7 +22,7 @@ defmodule Aedis.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:httpoison, "~> 1.6"},
+      {:httpoison, "~> 1.7.0"},
       {:poison, "~> 4.0"},
       {:scribe, "~> 0.10"},
       {:mox, "~> 0.5.1", only: :test},
