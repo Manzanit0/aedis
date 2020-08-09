@@ -48,10 +48,14 @@ Init necessary configuration (this will save all sensitive data under `~/.aedis`
 Inspect your Phoenix project:
 
 ```shell script
-./aedis --path=/home/javiergarciamanzano/Work/rekki-backend/ --router=Chat.Web.Router
+./aedis --path=/home/javiergarciamanzano/Work/rekki-backend/ --router=Chat.Web.Router --graylog --appsignal
 ```
 
-Where `path` expects the path of a Phoenix project and `router` the name of the Phoenix router.
+Where `path` expects the path of a Phoenix project and `router` the name of the
+Phoenix router.
+
+Note: In order to obtain data from any of the configured third-party services they
+must be explicitly added to the command as an option, such as `--graylog`.
 
 ## TODO
 
@@ -83,7 +87,7 @@ Name            ips        average  deviation         median         99th %
 async        0.0403        24.82 s     ±0.00%        24.82 s        24.82 s
 sync         0.0177        56.53 s     ±0.00%        56.53 s        56.53 s
 
-Comparison: 
+Comparison:
 async        0.0403
 sync         0.0177 - 2.28x slower +31.71 s
 
