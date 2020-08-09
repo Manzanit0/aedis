@@ -36,15 +36,27 @@ defmodule Aedis do
   alias Aedis.Services.AppSignal
 
   def main(args) do
-    args
-    |> parse_params()
-    |> execute()
+    try do
+      args
+      |> parse_params()
+      |> execute()
+    rescue
+      e in RuntimeError -> IO.puts(e.message)
+    end
   end
 
   defp parse_params(args) do
+    # TODO parse invalid options
     args
     |> OptionParser.parse(
-      strict: [init: :boolean, path: :string, router: :string, help: :boolean]
+      strict: [
+        init: :boolean,
+        path: :string,
+        router: :string,
+        help: :boolean,
+        graylog: :boolean,
+        appsignal: :boolean
+      ]
     )
     |> elem(0)
   end
@@ -81,37 +93,46 @@ defmodule Aedis do
     IO.puts("Fantastic! You can now start using Aedis to inspect your API!")
   end
 
-  def execute(path: path, router: router) do
-    with {:gr, :ok} <- {:gr, Graylog.test_connection()},
-         {:as, :ok} <- {:as, AppSignal.test_connection()} do
-      IO.puts(":: Starting to fetch and aggregate data (this can take long) ::")
+  def execute(opts) do
+    router = Keyword.get(opts, :router, "")
+    path = Keyword.get(opts, :path, File.cwd!())
 
-      Phoenix.routes(path, router)
-      |> StatAggregator.get_aggregated_stats()
-      |> Scribe.print(data: [:method, :endpoint, :graylog_count, :appsignal_count])
-    else
-      {_, {:error, :enoent}} ->
-        IO.puts("!! Can't find configuration file. To solve, run $ aedis --init")
+    services =
+      []
+      |> append_if_true(Keyword.get(opts, :graylog, false), Graylog)
+      |> append_if_true(Keyword.get(opts, :appsignal, false), AppSignal)
+      |> Enum.map(&test_connection!/1)
 
-      {_, {:error, :enomem}} ->
-        IO.puts("!! Error reading config - not enough memory. This is weird...")
+    IO.puts(":: Starting to fetch and aggregate data (this can take long) ::")
 
-      {_, {:error, :novar}} ->
-        IO.puts("!! Missing configuration. To solve, run $ aedis --init")
+    Phoenix.routes(path, router)
+    |> StatAggregator.get_aggregated_stats(services)
+    |> Scribe.print(data: [:method, :endpoint, :graylog_count, :appsignal_count])
+  end
 
-      {:gr, {:error, error}} ->
-        IO.puts("!! Error connecting to Graylog -  #{error}")
+  defp append_if_true(list, true, item), do: list ++ [item]
+  defp append_if_true(list, _, _), do: list
 
-      {:as, {:error, error}} ->
-        IO.puts("!! Error connecting to AppSignal - #{error}")
+  defp prettify_error(error, service) do
+    case error do
+      {:error, :enoent} ->
+        "!! Can't find configuration file. To solve, run $ aedis --init"
+
+      {:error, :enomem} ->
+        "!! Error reading config - not enough memory. This is weird..."
+
+      {:error, :novar} ->
+        "!! Missing configuration. To solve, run $ aedis --init"
+
+      {:error, error} ->
+        "!! Error connecting to #{service} -  #{error}"
     end
   end
 
-  def execute(path: path) do
-    execute(path: path, router: "")
-  end
-
-  def execute(_) do
-    IO.puts("That is not a valid aedis command. See 'aedis --help'.")
+  defp test_connection!(module) do
+    case module.test_connection() do
+      :ok -> module
+      err -> raise prettify_error(err, module)
+    end
   end
 end

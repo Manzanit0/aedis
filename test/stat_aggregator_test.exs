@@ -9,6 +9,11 @@ defmodule StatAggregatorTest do
   alias Aedis.Services.Graylog
   alias Aedis.Services.AppSignal
 
+  @services [
+    Application.fetch_env!(:aedis, :appsignal_module),
+    Application.fetch_env!(:aedis, :graylog_module)
+  ]
+
   test "gets aggregated stats, discarding errors" do
     GraylogMock
     |> expect(:hit_count, fn %{endpoint: e, method: m} ->
@@ -27,7 +32,7 @@ defmodule StatAggregatorTest do
       Phoenix.Route.new("/api/v2/chat/:id", "POST", "ChatController", ":update")
     ]
 
-    [endpoint_1, endpoint_2] = StatAggregator.get_aggregated_stats(routes)
+    [endpoint_1, endpoint_2] = StatAggregator.get_aggregated_stats(routes, @services)
 
     assert %Result{
              endpoint: "/api/v2/chat/:id",
@@ -72,7 +77,8 @@ defmodule StatAggregatorTest do
       Phoenix.Route.new("/api/v2/order/:id", "GET", "OrderController", ":get")
     ]
 
-    [endpoint_1, endpoint_2, endpoint_3, endpoint_4] = StatAggregator.get_aggregated_stats(routes)
+    [endpoint_1, endpoint_2, endpoint_3, endpoint_4] =
+      StatAggregator.get_aggregated_stats(routes, @services)
 
     assert %Result{appsignal_count: 5} = endpoint_1
     assert %Result{appsignal_count: 3} = endpoint_2
